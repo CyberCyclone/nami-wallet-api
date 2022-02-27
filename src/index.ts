@@ -5,8 +5,8 @@ type Endpoints = {
     enable : () => Promise<void>,
     getAddress : () => Promise<string>,
     getAddressHex : () => Promise<string>,
-    getRewardAddress : () => Promise<string>,
-    getRewardAddressHex : () => Promise<string>,
+    getRewardAddresses : () => Promise<string[]>,
+    getRewardAddressesHex : () => Promise<string[]>,
     getNetworkId : () => Promise<{
         id: number,
         network: string
@@ -109,19 +109,21 @@ export async function NamiWalletApi(NamiWalletObject: any, blockfrostApiKey: str
         return await Nami.getChangeAddress()
     }
     
-    async function getRewardAddress() : Promise<string>{
-        return S.RewardAddress.from_address(
-            S.Address.from_bytes(
-                Buffer.from(
-                    await getRewardAddressHex(),
-                    'hex'
+    async function getRewardAddresses() : Promise<string[]>{
+        return (await getRewardAddressesHex()).map((hexAddress)=>{
+            return S.RewardAddress.from_address(
+                S.Address.from_bytes(
+                    Buffer.from(
+                        hexAddress,
+                        'hex'
+                    )
                 )
-            )
-        )?.to_address().to_bech32()
+            )?.to_address().to_bech32()
+        }) 
     }
 
-    async function getRewardAddressHex() : Promise<string> {
-        return await Nami.getRewardAddress()
+    async function getRewardAddressesHex() : Promise<string[]> {
+        return await Nami.getRewardAddresses()
     }
 
     async function getNetworkId() : Promise<{id: number, network: string}>{
@@ -140,7 +142,7 @@ export async function NamiWalletApi(NamiWalletObject: any, blockfrostApiKey: str
                 )
             )
         )
-        let UTXOS = []
+        let UTXOS: Utxo[] = []
         for(let utxo of Utxos){
             let assets = _utxoToAssets(utxo)
 
@@ -319,17 +321,16 @@ export async function NamiWalletApi(NamiWalletObject: any, blockfrostApiKey: str
 
     async function delegate({poolId, metadata = null, metadataLabel = '721'} : Delegate) : Promise<string>{
         let protocolParameter = await _getProtocolParameter()
-        
         let stakeKeyHash = S.RewardAddress.from_address(
             S.Address.from_bytes(
                 Buffer.from(
-                    await getRewardAddressHex(),
+                    (await getRewardAddressesHex())[0],
                     'hex'
                 )
             )
         ).payment_cred().to_keyhash().to_bytes()
 
-        let delegation = await getDelegation(await getRewardAddress())
+        let delegation = await getDelegation((await getRewardAddresses())[0])
 
         async function getDelegation(rewardAddr: string) : Promise<any>{
             let stake = await _blockfrostRequest(`/accounts/${rewardAddr}`) 
@@ -457,7 +458,7 @@ export async function NamiWalletApi(NamiWalletObject: any, blockfrostApiKey: str
 
     function _utxoToAssets(utxo: TransactionUnspentOutput) : Asset[]{
         let value : any = utxo.output().amount()
-        const assets = [];
+        const assets: Asset[] = [];
         assets.push({ unit: 'lovelace', quantity: value.coin().to_str() });
         if (value.multiasset()) {
             const multiAssets = value.multiasset().keys();
@@ -741,8 +742,8 @@ export async function NamiWalletApi(NamiWalletObject: any, blockfrostApiKey: str
         enable,
         getAddress,
         getAddressHex,
-        getRewardAddress,
-        getRewardAddressHex,
+        getRewardAddresses,
+        getRewardAddressesHex,
         getNetworkId,
         getUtxos,
         getAssets,

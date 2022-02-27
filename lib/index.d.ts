@@ -4,8 +4,8 @@ declare type Endpoints = {
     enable: () => Promise<void>;
     getAddress: () => Promise<string>;
     getAddressHex: () => Promise<string>;
-    getRewardAddress: () => Promise<string>;
-    getRewardAddressHex: () => Promise<string>;
+    getRewardAddresses: () => Promise<string[]>;
+    getRewardAddressesHex: () => Promise<string[]>;
     getNetworkId: () => Promise<{
         id: number;
         network: string;
